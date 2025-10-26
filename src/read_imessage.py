@@ -42,7 +42,7 @@ def extract_chats(c : sqlite3.Cursor) -> tuple[list[str], list[str]]: # TODO wri
             dm.append(chat)
     return (dm, group_chat)
 
-def extract_dm_conversation(c : sqlite3.Cursor, chat : str, group_chat : bool, most_recent : bool = True, limit : int = 20) -> pd.DataFrame: # TODO write a spec
+def extract_conversation(c : sqlite3.Cursor, chat : str, group_chat : bool, most_recent : bool = True, limit : int = 20) -> pd.DataFrame: # TODO write a spec
     order_by = "DESC"
     if not most_recent:
         order_by = "ASC"
@@ -119,6 +119,6 @@ c1 = conn.cursor()
 dm, group = extract_chats(c1)
 print(dm)
 print(group)
-print(extract_dm_conversation(c1, dm[5], False, limit = 10))
+print(extract_conversation(c1, dm[5], False, limit = 10))
 
 conn.close()
