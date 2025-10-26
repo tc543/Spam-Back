@@ -1,30 +1,48 @@
 import sqlite3
 import pandas as pd
-import datetime
+import typedstream
 
-conn = sqlite3.connect('/Users/whusyki/Library/Messages/chat.db')
+# Set up connection
+conn = sqlite3.connect('/Users/whusyki/Library/Messages/chat.db') # make it parameter TODO
+# Create a cursor object, a way to talk to the database through connection
 c = conn.cursor()
 
-other_number = "+"  # the phone number you want
-
-cmd_msgs = f"""
-SELECT 
-    m.ROWID AS message_id,
-    m.text,
-    m.handle_id,
-    CASE 
-        WHEN m.handle_id IS NULL THEN 'me' 
-        ELSE 'other' 
-    END AS sender_label,
-    datetime(m.date + strftime('%s','2001-01-01'), 'unixepoch') AS date_utc,
-    c.chat_identifier
-FROM message m
-JOIN chat_message_join cmj ON m.ROWID = cmj.message_id
-JOIN chat c ON cmj.chat_id = c.ROWID
-WHERE c.chat_identifier = '{other_number}'
-ORDER BY m.date
+query = """
+SELECT
+    message.ROWID,
+    datetime(message.date / 1000000000 + strftime('%s', '2001-01-01'), 'unixepoch', 'localtime') AS message_date,
+    message.is_from_me,
+    message.text,
+    message.attributedBody
+FROM message
+ORDER BY message_date DESC
+LIMIT 100;
 """
 
-c.execute(cmd_msgs)
-df_msgs = pd.DataFrame(c.fetchall(), columns=["id", "text", "handle_id", "sender_label", "time", "chat"])
-print(df_msgs)
+# Enter our sql command in chat.db and return result, if any, in the cursor object
+c.execute(query)
+# Extract result into python variable
+rows = c.fetchall()
+
+def decode_attributed_body(data):
+    '''
+    Blob in attributedBody is serialized by Apple, this function helps unserialize it
+    and return a perfect normal text with emojis
+
+    Not sure if I need to have those 2 safe check, but keep it for now and can uncomment later
+    if we do happen to run a test case of not safe checking
+    '''
+    # if not data:
+    #     return None
+    # if isinstance(data, memoryview):
+    #     data = data.tobytes()
+    return typedstream.unarchive_from_data(data).contents[0].value.value
+
+# Printing the result
+# Verifying can read others and my text message
+for rowid, date, is_from_me, text, blob in rows:
+    decoded_text = text or decode_attributed_body(blob)
+    sender = "Me" if is_from_me else "Them"
+    print(f"[{date}] ({sender}) {decoded_text}")
+
+conn.close()
