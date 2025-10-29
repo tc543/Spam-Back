@@ -1,6 +1,53 @@
 import sqlite3
 import pandas as pd
 import typedstream
+from .read_imessage import extract_chats
+
+# Set up connection
+conn = sqlite3.connect('/Users/whusyki/Library/Messages/chat.db') # make it parameter TODO
+# Create a cursor object, a way to talk to the database through connection
+c1 = conn.cursor()
+dm, group = extract_chats(c1)
+
+from .read_imessage import *
+from .write_imessage import *
+
+import subprocess
+
+def send_imessage(recipient, message): # TODO add a spec
+    # TODO Write a check if this message exist in imessage or not
+    # chat_identifiers = set(extract_chats())
+    applescript_command = f"""
+    osascript -e '
+    on run {{targetBuddyPhone, targetMessage}}
+        tell application "Messages"
+            set targetService to 1st service whose service type = iMessage
+            set targetBuddy to buddy targetBuddyPhone of targetService
+            send targetMessage to targetBuddy
+        end tell
+    end run
+    ' {recipient} "{message}"
+    """
+    try:
+        subprocess.run(applescript_command, shell=True, check=True)
+        print(f"Message sent to {recipient} successfully.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error sending message: {e}")
+        print(f"AppleScript error output: {e.stderr}")
+
+msg = """
+Testing message
+Message Sent!
+"""
+
+if __name__ == "__main__":
+    chat_identifier = '+1'
+    send_imessage(chat_identifier, msg)
+
+
+import sqlite3
+import pandas as pd
+import typedstream
 
 def decode_attributed_body(data): # TODO write better spec
     '''

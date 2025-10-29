@@ -26,5 +26,6 @@ Testing message
 Message Sent!
 """
 
-chat_identifier = '+1'
-send_imessage(chat_identifier, msg)
+if __name__ == "__main__":
+    chat_identifier = '+1'
+    send_imessage(chat_identifier, msg)
