@@ -108,17 +108,17 @@ def open_attachment(filepath : str):
     # it might be in shell?
     pass
 
-"""
-Example of how to test these functions
-Can comment/uncomment to play around
-"""
-# Set up connection
-conn = sqlite3.connect('/Users/whusyki/Library/Messages/chat.db') # make it parameter TODO
-# Create a cursor object, a way to talk to the database through connection
-c1 = conn.cursor()
-dm, group = extract_chats(c1)
-print(dm)
-print(group)
-print(extract_conversation(c1, dm[5], False, limit = 10))
-
-conn.close()
+if __name__ == "main":
+    """
+    Example of how to test these functions
+    Can comment/uncomment to play around
+    """
+    # Set up connection
+    conn = sqlite3.connect('/Users/whusyki/Library/Messages/chat.db') # make it parameter TODO
+    # Create a cursor object, a way to talk to the database through connection
+    c1 = conn.cursor()
+    dm, group = extract_chats(c1)
+    print(dm)
+    print(group)
+    print(extract_conversation(c1, dm[5], False, limit = 10))
+    conn.close()
