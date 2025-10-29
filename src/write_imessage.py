@@ -20,12 +20,3 @@ def send_imessage(recipient, message): # TODO add a spec
     except subprocess.CalledProcessError as e:
         print(f"Error sending message: {e}")
         print(f"AppleScript error output: {e.stderr}")
-
-msg = """
-Testing message
-Message Sent!
-"""
-
-if __name__ == "__main__":
-    chat_identifier = '+1'
-    send_imessage(chat_identifier, msg)

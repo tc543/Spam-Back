@@ -1,8 +1,8 @@
 import sqlite3
 import pandas as pd
 import typedstream
-from .read_imessage import extract_chats
-from .llm_prompter import llama3
+from .read_imessage import *
+from .llm_prompter import *
 
 # Set up connection
 conn = sqlite3.connect('/Users/whusyki/Library/Messages/chat.db') # make it parameter TODO

@@ -42,7 +42,14 @@ def extract_chats(c : sqlite3.Cursor) -> tuple[list[str], list[str]]: # TODO wri
             dm.append(chat)
     return (dm, group_chat)
 
-def extract_conversation(c : sqlite3.Cursor, chat : str, group_chat : bool, most_recent : bool = True, limit : int = 20) -> pd.DataFrame: # TODO write a spec
+def extract_conversation(
+    c : sqlite3.Cursor,
+    chat : str,
+    group_chat : bool,
+    most_recent : bool = True,
+    limit : int = 20,
+    full_view : bool = False
+) -> pd.DataFrame: # TODO write a spec
     order_by = "DESC"
     if not most_recent:
         order_by = "ASC"
@@ -51,6 +58,7 @@ def extract_conversation(c : sqlite3.Cursor, chat : str, group_chat : bool, most
         *
     FROM (
         SELECT
+            message."ROWID",
             datetime(message.date / 1000000000 + strftime("%s", "2001-01-01"), "unixepoch", "localtime") AS message_date,
             message.text,
             message.is_from_me,
@@ -75,7 +83,7 @@ def extract_conversation(c : sqlite3.Cursor, chat : str, group_chat : bool, most
     c.execute(query)
     rows = c.fetchall()
     messages = []
-    for date, text, is_from_me, blob, attachment, sender_person in rows:
+    for row_id, date, text, is_from_me, blob, attachment, sender_person in rows:
         decoded_text = text or decode_attributed_body(blob)
         sender = "Me" if is_from_me else sender_person
         if attachment == None:
@@ -83,22 +91,20 @@ def extract_conversation(c : sqlite3.Cursor, chat : str, group_chat : bool, most
         else:
             attachment = "$HOME" + attachment[1:]
         messages.append({
+            "Row_ID": row_id,
             "Date": date,
             "Sender": sender,
             "Conversation": "[Group Chat]" if group_chat else "[Direct Message]",
             "Text": decoded_text,
             "Attachment": attachment
         })
-    df = pd.DataFrame(messages, columns=["Date", "Sender", "Conversation", "Text", "Attachment"])
+    df = pd.DataFrame(messages, columns=["Row_ID", "Date", "Sender", "Conversation", "Text", "Attachment"])
 
-    """
-    [Optional]
-    Full screen for printing the entire table
-    """
-    # pd.set_option('display.max_columns', None)
-    # pd.set_option('display.max_rows', None)
-    # pd.set_option('display.max_colwidth', None)
-    # pd.set_option('display.width', None)
+    if full_view:
+        pd.set_option('display.max_columns', None)
+        pd.set_option('display.max_rows', None)
+        pd.set_option('display.max_colwidth', None)
+        pd.set_option('display.width', None)
 
     return df
 
@@ -107,18 +113,3 @@ def open_attachment(filepath : str):
     # open "filepath"
     # it might be in shell?
     pass
-
-if __name__ == "main":
-    """
-    Example of how to test these functions
-    Can comment/uncomment to play around
-    """
-    # Set up connection
-    conn = sqlite3.connect('/Users/whusyki/Library/Messages/chat.db') # make it parameter TODO
-    # Create a cursor object, a way to talk to the database through connection
-    c1 = conn.cursor()
-    dm, group = extract_chats(c1)
-    print(dm)
-    print(group)
-    print(extract_conversation(c1, dm[5], False, limit = 10))
-    conn.close()
