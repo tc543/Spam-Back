@@ -9,3 +9,4 @@ conn = sqlite3.connect('/Users/whusyki/Library/Messages/chat.db') # make it para
 # Create a cursor object, a way to talk to the database through connection
 c1 = conn.cursor()
 dm, group = extract_chats(c1)
+
