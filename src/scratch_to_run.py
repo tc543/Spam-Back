@@ -10,15 +10,10 @@ def read_imessage():
     Example of how to test these functions
     Can comment/uncomment to play around
     """
-    # Set up connection
-    conn = sqlite3.connect('/Users/whusyki/Library/Messages/chat.db') # make it parameter TODO
-    # Create a cursor object, a way to talk to the database through connection
-    c1 = conn.cursor()
-    dm, group = extract_chats(c1)
+    dm, group = extract_chats()
     print(dm)
     print(group)
-    print(extract_conversation(c1, dm[5], False, limit = 10, full_view=True))
-    conn.close()
+    print(extract_conversation(dm[5], False, limit = 10, full_view=True))
 
 def write_imessage():
     msg = """
@@ -36,15 +31,17 @@ def llm_prompter():
     print(ai.get_model_response("Can you write me a code to generate fibonacci sequence of numbers with no explaation", "You have to write it recursively"))
 
 def message_db_utils():
-    print(check_if_table_exist("message_read_history", "messages.db"))
-    print(get_all_tables("messages.db"))
-    check_if_db_exist("messages.dbs")
+    # print(check_if_table_exist("message_read_history", "messages.db"))
+    # print(get_all_tables("messages.db"))
+    # check_if_db_exist("messages.dbs")
+    path = os.path.join(os.getcwd(), "data", "messages.db")
+    create_table(path)
 
 if __name__ == "__main__":
     print("Main: ")
     # Uncomment the function you want to run and it will be running helper function
     # in the file based on function name
-    # read_imessage()
+    read_imessage()
     # write_imessage()
-    llm_prompter()
+    # llm_prompter()
     # message_db_utils()

@@ -1,6 +1,7 @@
 import sqlite3
 import pandas as pd
 import typedstream
+import math
 
 def decode_attributed_body(data): # TODO write better spec
     '''
@@ -18,7 +19,9 @@ def decode_attributed_body(data): # TODO write better spec
     #     data = data.tobytes()
     return typedstream.unarchive_from_data(data).contents[0].value.value
 
-def extract_chats(c : sqlite3.Cursor) -> tuple[list[str], list[str]]: # TODO write a spec
+def extract_chats() -> tuple[list[str], list[tuple[str, str]]]: # TODO write a spec
+    conn = sqlite3.connect('/Users/whusyki/Library/Messages/chat.db') # make it parameter TODO
+    cursor = conn.cursor()
     query = """
     SELECT
         chat.chat_identifier,
@@ -31,25 +34,31 @@ def extract_chats(c : sqlite3.Cursor) -> tuple[list[str], list[str]]: # TODO wri
     ORDER BY
         num_participants DESC;
     """
-    c.execute(query)
-    res = c.fetchall()
+    cursor.execute(query)
+    res = cursor.fetchall()
     dm = []
     group_chat = []
     for chat, group_size in res:
+        if len(chat) < 12:
+            continue
         if group_size > 1:
-            group_chat.append(chat)
+            group_chat.append((chat, group_size))
         else:
             dm.append(chat)
     return (dm, group_chat)
 
 def extract_conversation(
-    c : sqlite3.Cursor,
     chat : str,
     group_chat : bool,
     most_recent : bool = True,
-    limit : int = 20,
-    full_view : bool = False
+    limit : int = 1_000_000_000,
+    full_view : bool = False,
+    last_row : int = -1
 ) -> pd.DataFrame: # TODO write a spec
+    # Set up connection
+    conn = sqlite3.connect('/Users/whusyki/Library/Messages/chat.db') # make it parameter TODO
+    # Create a cursor object, a way to talk to the database through connection
+    cursor = conn.cursor()
     order_by = "DESC"
     if not most_recent:
         order_by = "ASC"
@@ -74,14 +83,15 @@ def extract_conversation(
             LEFT JOIN attachment ON message_attachment_join.attachment_id = attachment."ROWID"
         WHERE
             chat_identifier = '{chat}'
+            AND message."ROWID" > {last_row}
         ORDER BY
             message_date {order_by}
         LIMIT {limit}
     )
     ORDER BY message_date ASC;
     """
-    c.execute(query)
-    rows = c.fetchall()
+    cursor.execute(query)
+    rows = cursor.fetchall()
     messages = []
     for row_id, date, text, is_from_me, blob, attachment, sender_person in rows:
         decoded_text = text or decode_attributed_body(blob)
