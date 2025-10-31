@@ -50,7 +50,7 @@ def extract_chats() -> tuple[list[str], list[tuple[str, str]]]: # TODO write a s
 def extract_conversation(
     chat : str,
     group_chat : bool,
-    most_recent : bool = True,
+    most_recent : bool,
     limit : int = 1_000_000_000,
     full_view : bool = False,
     last_row : int = -1
@@ -117,6 +117,26 @@ def extract_conversation(
         pd.set_option('display.width', None)
 
     return df
+
+def convert_conversation_to_text(df, chat_mp):
+    text = ""
+    last_row = -1
+    for row in df.itertuples(index=False):
+        last_row = row.Row_ID
+        if row.Sender not in chat_mp:
+            chat_mp[row.Sender] = len(chat_mp)
+        text += "Person " + str(chat_mp[row.Sender]) + " said " + row.Text + "\n"
+        """
+        TODO
+        Add attachment response into this conversation
+        """
+        # if row.Attachment != "[No attachment found]":
+        #     prompt += "In addition to the text, person " + chat_mp[row.Sender] + " add an attachment to it and the attachment is about "
+        #     + " Insert Attachment Summary or something " # TODO, add a summary of what the attachment is, purpose maybe no need to add bc
+        #                                                  # it will be easier to see the purpose in this summary when including context clues around
+    print("New incoming text: ")
+    print(text)
+    return text, last_row
 
 def open_attachment(filepath : str):
     # TODO Implement terminal code that auto open an attachment, rather than coding it up in terminal by

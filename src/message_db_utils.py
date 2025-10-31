@@ -1,6 +1,7 @@
 import sqlite3
 import os
 from .read_imessage import *
+from .write_imessage import *
 from .llm_prompter import *
 import json
 from datetime import datetime
@@ -82,71 +83,94 @@ def create_table(db_path : str, table : str):
     conn.commit()
     conn.close()
 
-def init_summary_conversation(df, group_chat : bool, group_size : int = 0):
+def generate_response(conversation: str, initial: bool, summary: str | None = None) -> str:
     prompt = """
-    Generate a clear and well-detailed summary of the following conversation. 
-    Include enough information about the main topics, participants, 
-    and their intentions so that future incoming messages can be understood without re-reading the entire chat. 
-    Keep it informative but not overly long\n\n.
     """
-    chat_mp = {}
-    last_row = -1
+    if initial:
+        prompt += f"""
+        Read the following conversation and write a natural, contextually appropriate reply that smoothly continues the discussion. 
+        Only output the reply text itself — do not include explanations, notes, or formatting.
+
+        Conversation:
+
+        {conversation}
+        """
+    else:
+        prompt = f"""
+        Here is a summary of the conversation so far:
+
+        {summary}
+
+        Below are the new incoming messages:
+
+        {conversation}
+
+        Using the context from the summary and the new messages, write a natural and contextually appropriate reply that continues the conversation smoothly. 
+        Only output the reply text itself — do not include explanations, formatting, or any additional commentary.
+        """
+    llm = llama3("llama3:latest")
+    return llm.get_model_response(prompt)
+
+def init_summary_conversation(conversation: str, group_chat: bool, me: str, group_size: int = 0,):
+    prompt = f"""
+    You are one of the participants in the following conversation, referred to as {me}.
+
+    Generate a clear and well-structured summary of the conversation. 
+    Your goal is to capture the essential context so that future messages can be understood without rereading the entire chat.
+
+    Organize your response into the following sections:
+    - **Participants:** Identify who is involved and their general roles or perspectives.
+    - **Main Topics:** Describe the key subjects or themes discussed.
+    - **Intentions / Actions:** Summarize what each participant seems to be trying to achieve or express.
+    - **Overall Summary:** Provide a concise narrative tying the conversation together.
+
+    Keep it informative and coherent, detailed enough to preserve context, 
+    but avoid unnecessary repetition or excessive length.
+
+    Conversation:
+
+    {conversation}
+    """
     if group_chat:
         prompt += f"This is a group chat conversation of {group_size} people.\n\n"
     else:
         prompt += "This is a direct message.\n\n"
-    for row in df.itertuples(index=False):
-        last_row = row.Row_ID
-        if row.Sender not in chat_mp:
-            chat_mp[row.Sender] = len(chat_mp)
-        prompt += "Person " + str(chat_mp[row.Sender]) + " said " + row.Text + "\n"
-        """
-        TODO
-        Add attachment response into this conversation
-        """
-        # if row.Attachment != "[No attachment found]":
-        #     prompt += "In addition to the text, person " + chat_mp[row.Sender] + " add an attachment to it and the attachment is about "
-        #     + " Insert Attachment Summary or something " # TODO, add a summary of what the attachment is, purpose maybe no need to add bc
-        #                                                  # it will be easier to see the purpose in this summary when including context clues around
     llm = llama3("llama3:latest")
-    return (llm.get_model_response(prompt), chat_mp, last_row)
+    return llm.get_model_response(prompt)
 
-def update_summary_conversation(df, chat_mp : dict, prev_summary : str, group_chat : bool, group_size : int = 0):
+def update_summary_conversation(conversation: str, prev_summary : str, me: str):
     prompt = f"""
-    Here is the previous summary of the conversation from the last time it was read:
+    You are one of the participants in the conversation, referred to as {me}.
+
+    Below is the previous summary of the conversation so far:
 
     {prev_summary}
 
     Now, here are the new incoming messages:
 
+    {conversation}
+
+    Please update the summary to include the new information while maintaining context from the previous summary.
+
+    Organize your updated summary into the following sections:
+    - **Participants:** Update or confirm who is involved and their roles.
+    - **Main Topics:** Reflect any new topics or developments.
+    - **Intentions / Actions:** Note any changes in participants' goals, tone, or direction.
+    - **Overall Summary:** Integrate the old and new information into one coherent summary that reflects the current state of the conversation.
+
+    Keep it informative, logically structured, and moderately detailed, 
+    ensuring it can serve as context for future messages without rereading the full chat.
+    """
 
     """
-    last_row = -1
+    Might or might not need it, depending on how well llm generating without this information
+    """
     # if group_chat:
     #     prompt += "Again, this is a group chat conversation of {group_size} people.\n"
     # else:
-    #     prompt += "Again, this is a direct message.\n"
-    for row in df.itertuples(index=False):
-        last_row = row.Row_ID
-        if row.Sender not in chat_mp:
-            chat_mp[row.Sender] = len(chat_mp)
-        prompt += "Person " + str(chat_mp[row.Sender]) + " said " + row.Text + "\n"
-        """
-        TODO
-        Add attachment response into this conversation
-        """
-        # if row.Attachment != "[No attachment found]":
-        #     prompt += "In addition to the text, person " + chat_mp[row.Sender] + " add an attachment to it and the attachment is about "
-        #     + " Insert Attachment Summary or something " # TODO, add a summary of what the attachment is, purpose maybe no need to add bc
-        #                                                  # it will be easier to see the purpose in this summary when including context clues around
-    prompt += """
-
-    Please generate an updated summary that incorporates the new messages while keeping the previous context. 
-    The summary should provide enough detail about the main topics, participants, and their intentions so that future messages can be understood without rereading the entire conversation. 
-    Keep it informative but concise, avoiding unnecessary repetition.
-    """
+    #     prompt += "Again, this is a direct message.\n"                               # it will be easier to see the purpose in this summary when including context clues around
     llm = llama3("llama3:latest")
-    return (llm.get_model_response(prompt), chat_mp, last_row)
+    return llm.get_model_response(prompt)
     
 def insert_row_in_table(
     db_path: str,
@@ -157,7 +181,6 @@ def insert_row_in_table(
     is_spam: int = 0,
     chat_mp: dict = None
 ):
-    print(chat_id)
     if chat_mp is None:
         raise ValueError("Invalid conversation") # Can this case actually happen? Maybe we should try system testing
     if check_if_val_exists(db_path, "chat_id", chat_id, table):
@@ -188,7 +211,7 @@ def update_row_in_table(
     chat_id: int,
     row_id: int,
     summary: str,
-    chat_mapping: dict
+    chat_mp: dict
 ):
     """
     TODO
@@ -196,12 +219,13 @@ def update_row_in_table(
     """
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    check_if_val_exists(db_path, table, "chat_id", chat_id)
-    fields, values = []
+    check_if_val_exists(db_path, "chat_id", chat_id, table)
+    fields = []
+    values = []
     fields.append("summary = ?")
     values.append(summary)
-    fields.append("chat_mapping = ?")
-    values.append(json.dumps(chat_mapping))
+    fields.append("chat_mp = ?")
+    values.append(json.dumps(chat_mp))
     fields.append("row_id = ?")
     values.append(row_id)
     fields.append("timestamp = ?")
@@ -227,29 +251,85 @@ def extract_row_from_table(db_path: str, table: str, chat_id: str) -> dict | Non
         row_dict["chat_mp"] = json.loads(row_dict["chat_mp"])
     return row_dict
 
-def init_table(db_path : str, table : str):    
+def init_table(db_path: str, table: str, chat: any, group: bool):    
     check_if_table_exists(table, db_path)
-    dm, group = extract_chats()
-    # for chat in dm:
-    #     conversation = extract_conversation(chat, False)
-    #     init_summary, chat_mp, last_row = init_summary_conversation(conversation, False)
-    #     insert_row_in_table(db_path, table, last_row, chat, init_summary, 0, chat_mp)
-    for g in group:
-        print(g)
-        conversation = extract_conversation(g[0], True)
-        init_summary, chat_mp, last_row = init_summary_conversation(conversation, True, g[1])
-        insert_row_in_table(db_path, table, last_row, g[0], init_summary, 0, chat_mp)
+    if group:
+        # TODO assert chat is group
+        conversation = extract_conversation(chat[0], True, False)
+        chat_mp = {}
+        text, last_row = convert_conversation_to_text(conversation, chat_mp)
+        init_summary = init_summary_conversation(text, True, chat_mp["Me"])
+        insert_row_in_table(db_path, table, last_row, chat[0], init_summary, 0, chat_mp)
+        response = generate_response(text, True)
+        send_imessage(chat[0], response)
+    else:
+        # TODO assert chat is dm
+        conversation = extract_conversation(chat, True, False)
+        chat_mp = {}
+        text, last_row = convert_conversation_to_text(conversation, chat_mp)
+        init_summary = init_summary_conversation(text, True, chat_mp["Me"])
+        insert_row_in_table(db_path, table, last_row, chat, init_summary, 0, chat_mp)
+        response = generate_response(text, True)
+        send_imessage(chat, response)
 
-def update_table(db_path : str, table : str):
+def update_table(db_path : str, table : str, chat: any, group: bool):
     check_if_table_exists(table, db_path)
-    dm, group = extract_chats()
-    for chat in dm:
+    if group:
+        curr_row = extract_row_from_table(db_path, table, chat[0])
+        conversation = extract_conversation(chat, True, False, last_row=curr_row["row_id"])
+        text, last_row = convert_conversation_to_text(conversation, curr_row["chat_mp"])
+        updated_summary = update_summary_conversation(text, curr_row["summary"], curr_row["chat_mp"]["Me"])
+        update_row_in_table(db_path, table, chat[0], last_row, updated_summary, curr_row["chat_mp"])
+        response = generate_response(text, False, curr_row["summary"])
+        send_imessage(chat[0], response)
+    else:
         curr_row = extract_row_from_table(db_path, table, chat)
-        conversation = extract_conversation(chat, False, curr_row["row_id"])
-        updated_summary, updated_chat_mp, new_last_row = update_summary_conversation(conversation, curr_row["chat_mp"], curr_row["summary"], False)
-        update_row_in_table(db_path, table, chat, new_last_row, updated_summary, updated_chat_mp)
-    for g in group:
-        curr_row = extract_row_from_table(db_path, table, g[0])
-        conversation = extract_conversation(g[0], False, curr_row["row_id"])
-        updated_summary, updated_chat_mp, new_last_row = update_summary_conversation(conversation, curr_row["chat_mp"], curr_row["summary"], True, g[1])
-        update_row_in_table(db_path, table, chat, new_last_row, updated_summary, updated_chat_mp)
+        conversation = extract_conversation(chat, False, False, last_row=curr_row["row_id"])
+        text, last_row = convert_conversation_to_text(conversation, curr_row["chat_mp"])
+        updated_summary = update_summary_conversation(text, curr_row["summary"], curr_row["chat_mp"]["Me"])
+        update_row_in_table(db_path, table, chat, last_row, updated_summary, curr_row["chat_mp"])
+        response = generate_response(text, False, curr_row["summary"])
+        send_imessage(chat, response)
+
+def detect_incoming_messages(db_path: str, table: str, chat: str, group: bool) -> bool:
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute(f"""
+        SELECT
+            *
+        FROM
+            {table}
+        WHERE
+            chat_id = ?
+        ORDER BY
+            row_id DESC
+        LIMIT 1
+    """,
+        (chat,)
+    )
+    row = cursor.fetchone()
+    last_row_id = row["row_id"]
+    conn.close()
+    conn = sqlite3.connect('/Users/whusyki/Library/Messages/chat.db')
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    query = f"""
+    SELECT
+        message."ROWID" AS row_id
+    FROM
+        chat
+        JOIN chat_message_join ON chat."ROWID" = chat_message_join.chat_id
+        JOIN message ON chat_message_join.message_id = message."ROWID"
+    WHERE
+        chat_identifier = '{chat}'
+        AND message.is_from_me = 0
+    ORDER BY
+        message.date DESC
+    LIMIT 1
+    """
+    cursor.execute(query)
+    result = cursor.fetchone()
+    if result:
+        return result["row_id"] > last_row_id
+    return False
