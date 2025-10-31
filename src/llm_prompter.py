@@ -11,16 +11,14 @@ class llama3:
     """
     def __init__(self, model : str):
         self.model = model
-    def get_model_response(self, prompt : str) -> str:
+    def get_model_response(self, prompt : str, background : str = "") -> str:
         output = ""
-        for chunk in ollama.chat(model=self.model, messages=[{'role': 'user', 'content': prompt}], stream=True):
+        incoming_input = [
+            {"role": "system", "content": background},
+            {"role": "user", "content": prompt}
+        ]
+        for chunk in ollama.chat(model=self.model, messages=incoming_input, stream=True):
             if 'message' in chunk and 'content' in chunk['message']:
                 line = chunk['message']['content']
                 output += line
         return output
-
-"""
-Example of how to use
-"""
-# ai = llama3("llama3:latest")
-# print(ai.get_model_response("Can you write me a code to generate fibonacci sequence of numbers"))
