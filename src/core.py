@@ -20,6 +20,8 @@ dm, group = extract_chats()
 # print(group)
 """
 Initialize database and table if empty
+OR
+First time talking to someone with the AI
 """
 # create_table(db_path, table)
 # init_table(db_path, table, chat, False)
