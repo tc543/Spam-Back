@@ -1,7 +1,7 @@
 import sqlite3
 import pandas as pd
 import typedstream
-import math
+from config import *
 
 def decode_attributed_body(data): # TODO write better spec
     '''
@@ -20,7 +20,7 @@ def decode_attributed_body(data): # TODO write better spec
     return typedstream.unarchive_from_data(data).contents[0].value.value
 
 def extract_chats() -> tuple[list[str], list[tuple[str, str]]]: # TODO write a spec
-    conn = sqlite3.connect('/Users/whusyki/Library/Messages/chat.db') # make it parameter TODO
+    conn = sqlite3.connect(config['file_path']['chat_db_path'])
     cursor = conn.cursor()
     query = """
     SELECT
@@ -36,16 +36,15 @@ def extract_chats() -> tuple[list[str], list[tuple[str, str]]]: # TODO write a s
     """
     cursor.execute(query)
     res = cursor.fetchall()
-    dm = []
-    group_chat = []
+    all_chats = []
     for chat, group_size in res:
-        if len(chat) < 12:
+        if len(chat) < 12: # TODO normalize it to phone number
             continue
         if group_size > 1:
-            group_chat.append((chat, group_size))
+            all_chats.append((chat, group_size))
         else:
-            dm.append(chat)
-    return (dm, group_chat)
+            all_chats.append((chat, group_size))
+    return all_chats
 
 def extract_conversation(
     chat : str,
@@ -56,7 +55,7 @@ def extract_conversation(
     last_row : int = -1
 ) -> pd.DataFrame: # TODO write a spec
     # Set up connection
-    conn = sqlite3.connect('/Users/whusyki/Library/Messages/chat.db') # make it parameter TODO
+    conn = sqlite3.connect(config['file_path']['chat_db_path'])
     # Create a cursor object, a way to talk to the database through connection
     cursor = conn.cursor()
     order_by = "DESC"
