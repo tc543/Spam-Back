@@ -10,7 +10,7 @@ db_path = os.path.join(os.getcwd(), 'data/messages.db') # TODO make it generaliz
 table = "message_read_history"
 
 """SENSITIVE, DELETE BEFORE COMMIT AND PUSH TO GITHUB"""
-chat = "+15673955102" # Add a 1 for US, also need to use python phone package function to help normalize it
+chat = "+1" # Add a 1 for US, also need to use python phone package function to help normalize it
 """SENSITIVE, DELETE BEFORE COMMIT AND PUSH TO GITHUB"""
 
 
