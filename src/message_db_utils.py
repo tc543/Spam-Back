@@ -1,11 +1,10 @@
 import sqlite3
 import os
-from .read_imessage import *
-from .write_imessage import *
-from .llm_prompter import *
 import json
 from datetime import datetime
 from src import *
+from config import *
+
 
 def check_if_db_exists(db_path : str):
     if not os.path.exists(db_path):
@@ -226,6 +225,14 @@ def extract_row_from_table(db_path: str, table: str, chat_id: str) -> dict | Non
 
 def init_table(db_path: str, table: str, chat: any, group: bool):    
     check_if_table_exists(table, db_path)
+    all_chats = extract_chats()
+    for user_chat, group_size in all_chats:
+        if group:
+            if any == user_chat and group_size > 1:
+                return
+        else:
+            if any == user_chat and group_size == 1:
+                return
     if group:
         # TODO assert chat is group
         conversation = extract_conversation(chat[0], True, False)
@@ -284,7 +291,7 @@ def detect_incoming_messages(db_path: str, table: str, chat: str, group: bool) -
     row = cursor.fetchone()
     last_row_id = row["row_id"]
     conn.close()
-    conn = sqlite3.connect('/Users/whusyki/Library/Messages/chat.db')
+    conn = sqlite3.connect(config['file_path']['chat_db_path'])
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     query = f"""
