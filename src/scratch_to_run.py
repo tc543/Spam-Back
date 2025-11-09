@@ -10,10 +10,9 @@ def read_imessage():
     Example of how to test these functions
     Can comment/uncomment to play around
     """
-    dm, group = extract_chats()
-    print(dm)
-    print(group)
-    print(extract_conversation(dm[5], False, limit = 10, full_view=True))
+    res = extract_chats()
+    print(res)
+    print(extract_conversation(res[9][0], False, False, limit = 10, full_view=True))
 
 def write_imessage():
     msg = """
