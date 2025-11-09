@@ -2,8 +2,8 @@ import sqlite3
 import os
 import json
 from datetime import datetime
-from src import *
-from config import *
+from src import extract_chats, extract_conversation, convert_conversation_to_text, llama3, generate_response, send_imessage
+from config import config
 
 
 def check_if_db_exists(db_path : str):
