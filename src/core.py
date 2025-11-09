@@ -1,5 +1,6 @@
 import time
-from src import *
+import os
+from src import create_table, init_table, detect_incoming_messages, update_table
 
 
 def spam_back(chat: any):
