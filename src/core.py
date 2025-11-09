@@ -12,4 +12,3 @@ def spam_back(chat: any):
         print("polling")
         if detect_incoming_messages(db_path, table, chat, False):
             update_table(db_path, table, chat, False)
-
