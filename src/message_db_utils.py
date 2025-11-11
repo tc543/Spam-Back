@@ -228,10 +228,10 @@ def init_table(db_path: str, table: str, chat: any, group: bool):
     all_chats = extract_chats()
     for user_chat, group_size in all_chats:
         if group:
-            if any == user_chat and group_size > 1:
+            if chat == user_chat and group_size > 1:
                 return
         else:
-            if any == user_chat and group_size == 1:
+            if chat == user_chat and group_size == 1:
                 return
     if group:
         # TODO assert chat is group
@@ -258,17 +258,25 @@ def update_table(db_path : str, table : str, chat: any, group: bool):
         curr_row = extract_row_from_table(db_path, table, chat[0])
         conversation = extract_conversation(chat, True, False, last_row=curr_row["row_id"])
         text, last_row = convert_conversation_to_text(conversation, curr_row["chat_mp"])
+        print("New incoming text: ")
+        print(text)
         updated_summary = update_summary_conversation(text, curr_row["summary"], curr_row["chat_mp"]["Me"])
         update_row_in_table(db_path, table, chat[0], last_row, updated_summary, curr_row["chat_mp"])
+        print("New reponse text: ")
+        print(response)
         response = generate_response(text, False, curr_row["summary"])
         send_imessage(chat[0], response)
     else:
         curr_row = extract_row_from_table(db_path, table, chat)
         conversation = extract_conversation(chat, False, False, last_row=curr_row["row_id"])
         text, last_row = convert_conversation_to_text(conversation, curr_row["chat_mp"])
+        print("New incoming text: ")
+        print(text)
         updated_summary = update_summary_conversation(text, curr_row["summary"], curr_row["chat_mp"]["Me"])
         update_row_in_table(db_path, table, chat, last_row, updated_summary, curr_row["chat_mp"])
         response = generate_response(text, False, curr_row["summary"])
+        print("New reponse text: ")
+        print(response)
         send_imessage(chat, response)
 
 def detect_incoming_messages(db_path: str, table: str, chat: str, group: bool) -> bool:

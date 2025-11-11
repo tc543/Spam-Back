@@ -1,9 +1,21 @@
 import pytest
 
+import sys
+import os
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from src import generate_response
 
 @pytest.fixture
 def basic_conversation():
+    prompt = """
+        hey
+    """
+    return prompt
+
+@pytest.fixture
+def spammer_conversation():
     prompt = """
         hey
     """
