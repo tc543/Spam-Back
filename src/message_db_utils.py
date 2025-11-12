@@ -2,7 +2,7 @@ import sqlite3
 import os
 import json
 from datetime import datetime
-from src import extract_chats, extract_conversation, convert_conversation_to_text, llama3, generate_response, send_imessage
+from src import extract_chats, extract_conversation, convert_conversation_to_text, generate_response, send_imessage, init_summary_conversation, update_summary_conversation
 from config import config
 
 
@@ -83,67 +83,6 @@ def create_table(db_path : str, table : str):
     conn.commit()
     conn.close()
 
-def init_summary_conversation(conversation: str, group_chat: bool, me: str, group_size: int = 0,):
-    prompt = f"""
-    You are one of the participants in the following conversation, referred to as {me}.
-
-    Generate a clear and well-structured summary of the conversation. 
-    Your goal is to capture the essential context so that future messages can be understood without rereading the entire chat.
-
-    Organize your response into the following sections:
-    - **Participants:** Identify who is involved and their general roles or perspectives.
-    - **Main Topics:** Describe the key subjects or themes discussed.
-    - **Intentions / Actions:** Summarize what each participant seems to be trying to achieve or express.
-    - **Overall Summary:** Provide a concise narrative tying the conversation together.
-
-    Keep it informative and coherent, detailed enough to preserve context, 
-    but avoid unnecessary repetition or excessive length.
-
-    Conversation:
-
-    {conversation}
-    """
-    if group_chat:
-        prompt += f"This is a group chat conversation of {group_size} people.\n\n"
-    else:
-        prompt += "This is a direct message.\n\n"
-    llm = llama3("llama3:latest")
-    return llm.get_model_response(prompt)
-
-def update_summary_conversation(conversation: str, prev_summary : str, me: str):
-    prompt = f"""
-    You are one of the participants in the conversation, referred to as {me}.
-
-    Below is the previous summary of the conversation so far:
-
-    {prev_summary}
-
-    Now, here are the new incoming messages:
-
-    {conversation}
-
-    Please update the summary to include the new information while maintaining context from the previous summary.
-
-    Organize your updated summary into the following sections:
-    - **Participants:** Update or confirm who is involved and their roles.
-    - **Main Topics:** Reflect any new topics or developments.
-    - **Intentions / Actions:** Note any changes in participants' goals, tone, or direction.
-    - **Overall Summary:** Integrate the old and new information into one coherent summary that reflects the current state of the conversation.
-
-    Keep it informative, logically structured, and moderately detailed, 
-    ensuring it can serve as context for future messages without rereading the full chat.
-    """
-
-    """
-    Might or might not need it, depending on how well llm generating without this information
-    """
-    # if group_chat:
-    #     prompt += "Again, this is a group chat conversation of {group_size} people.\n"
-    # else:
-    #     prompt += "Again, this is a direct message.\n"                               # it will be easier to see the purpose in this summary when including context clues around
-    llm = llama3("llama3:latest")
-    return llm.get_model_response(prompt)
-    
 def insert_row_in_table(
     db_path: str,
     table: str,
@@ -240,7 +179,7 @@ def init_table(db_path: str, table: str, chat: any, group: bool):
         text, last_row = convert_conversation_to_text(conversation, chat_mp)
         init_summary = init_summary_conversation(text, True, chat_mp["Me"])
         insert_row_in_table(db_path, table, last_row, chat[0], init_summary, 0, chat_mp)
-        response = generate_response(text, True)
+        response = generate_response(text, True, chat_mp["Me"])
         send_imessage(chat[0], response)
     else:
         # TODO assert chat is dm
@@ -249,7 +188,7 @@ def init_table(db_path: str, table: str, chat: any, group: bool):
         text, last_row = convert_conversation_to_text(conversation, chat_mp)
         init_summary = init_summary_conversation(text, True, chat_mp["Me"])
         insert_row_in_table(db_path, table, last_row, chat, init_summary, 0, chat_mp)
-        response = generate_response(text, True)
+        response = generate_response(text, True, chat_mp["Me"])
         send_imessage(chat, response)
 
 def update_table(db_path : str, table : str, chat: any, group: bool):
@@ -260,11 +199,12 @@ def update_table(db_path : str, table : str, chat: any, group: bool):
         text, last_row = convert_conversation_to_text(conversation, curr_row["chat_mp"])
         print("New incoming text: ")
         print(text)
+        old_summary = curr_row["summary"]
         updated_summary = update_summary_conversation(text, curr_row["summary"], curr_row["chat_mp"]["Me"])
         update_row_in_table(db_path, table, chat[0], last_row, updated_summary, curr_row["chat_mp"])
         print("New reponse text: ")
         print(response)
-        response = generate_response(text, False, curr_row["summary"])
+        response = generate_response(text, False, curr_row["chat_mp"]["Me"], old_summary)
         send_imessage(chat[0], response)
     else:
         curr_row = extract_row_from_table(db_path, table, chat)
@@ -272,9 +212,10 @@ def update_table(db_path : str, table : str, chat: any, group: bool):
         text, last_row = convert_conversation_to_text(conversation, curr_row["chat_mp"])
         print("New incoming text: ")
         print(text)
+        old_summary = curr_row["summary"]
         updated_summary = update_summary_conversation(text, curr_row["summary"], curr_row["chat_mp"]["Me"])
         update_row_in_table(db_path, table, chat, last_row, updated_summary, curr_row["chat_mp"])
-        response = generate_response(text, False, curr_row["summary"])
+        response = generate_response(text, False, curr_row["chat_mp"]["Me"], old_summary)
         print("New reponse text: ")
         print(response)
         send_imessage(chat, response)
