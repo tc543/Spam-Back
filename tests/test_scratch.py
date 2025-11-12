@@ -1,7 +1,10 @@
-from .read_imessage import *
-from .write_imessage import *
-from .llm_prompter import *
-from .message_db_utils import *
+import sys
+import os
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from src import *
+
 
 def read_imessage():
     """

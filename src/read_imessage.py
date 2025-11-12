@@ -123,7 +123,10 @@ def convert_conversation_to_text(df, chat_mp):
     for row in df.itertuples(index=False):
         last_row = row.Row_ID
         if row.Sender not in chat_mp:
-            chat_mp[row.Sender] = len(chat_mp)
+            if row.Sender == "Me":
+                chat_mp[row.Sender] = "John Smith"
+            else:
+                chat_mp[row.Sender] = len(chat_mp)
         text += "Person " + str(chat_mp[row.Sender]) + " said " + row.Text + "\n"
         """
         TODO
@@ -133,8 +136,6 @@ def convert_conversation_to_text(df, chat_mp):
         #     prompt += "In addition to the text, person " + chat_mp[row.Sender] + " add an attachment to it and the attachment is about "
         #     + " Insert Attachment Summary or something " # TODO, add a summary of what the attachment is, purpose maybe no need to add bc
         #                                                  # it will be easier to see the purpose in this summary when including context clues around
-    print("New incoming text: ")
-    print(text)
     return text, last_row
 
 def open_attachment(filepath : str):
