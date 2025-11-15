@@ -16,12 +16,17 @@ def read_imessage():
     print(extract_conversation(res[9][0], False, False, limit = 10, full_view=True))
 
 def write_imessage():
-    msg = """
-    Testing message
-    Message Sent!
-    """
+    msg = "Wassup indeed! 😄 Dog mode activated! So, what's been on your mind lately? Any new hobbies, games, or shows you're into? 🐾📺"
     chat_identifier = '+1'
     send_imessage(chat_identifier, msg)
+
+def test_write_to_group():
+    msg = """
+    Testing group chat
+    Send message
+    """
+    chat_identifier = ''
+    send_imessage(chat_identifier, msg, True)
 
 def llm_prompter():
     """
@@ -37,11 +42,16 @@ def message_db_utils():
     path = os.path.join(os.getcwd(), "data", "messages.db")
     create_table(path)
 
+def test_config():
+    print(config['default']['person_name'])
+
 if __name__ == "__main__":
     print("Main: ")
     # Uncomment the function you want to run and it will be running helper function
     # in the file based on function name
-    read_imessage()
-    # write_imessage()
+    # read_imessage()
+    write_imessage()
+    # test_write_to_group()
+    # test_config()
     # llm_prompter()
     # message_db_utils()
