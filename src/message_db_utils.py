@@ -202,9 +202,9 @@ def update_table(db_path : str, table : str, chat: any, group: bool):
         old_summary = curr_row["summary"]
         updated_summary = update_summary_conversation(text, curr_row["summary"], curr_row["chat_mp"]["Me"])
         update_row_in_table(db_path, table, chat[0], last_row, updated_summary, curr_row["chat_mp"])
+        response = generate_response(text, False, curr_row["chat_mp"]["Me"], old_summary)
         print("New reponse text: ")
         print(response)
-        response = generate_response(text, False, curr_row["chat_mp"]["Me"], old_summary)
         send_imessage(chat[0], response)
     else:
         curr_row = extract_row_from_table(db_path, table, chat)
@@ -221,44 +221,60 @@ def update_table(db_path : str, table : str, chat: any, group: bool):
         send_imessage(chat, response)
 
 def detect_incoming_messages(db_path: str, table: str, chat: str, group: bool) -> bool:
+
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
-    cursor.execute(f"""
-        SELECT
-            *
-        FROM
-            {table}
-        WHERE
-            chat_id = ?
-        ORDER BY
-            row_id DESC
+
+    cursor.execute(
+        f"""
+        SELECT row_id
+        FROM {table}
+        WHERE chat_id = ?
+        ORDER BY row_id DESC
         LIMIT 1
-    """,
+        """,
         (chat,)
     )
+    
     row = cursor.fetchone()
-    last_row_id = row["row_id"]
     conn.close()
+
+    if not row:
+        return False
+
+    last_row_id = row["row_id"]
+
+
     conn = sqlite3.connect(config['file_path']['chat_db_path'])
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
-    query = f"""
-    SELECT
-        message."ROWID" AS row_id
-    FROM
-        chat
-        JOIN chat_message_join ON chat."ROWID" = chat_message_join.chat_id
-        JOIN message ON chat_message_join.message_id = message."ROWID"
-    WHERE
-        chat_identifier = '{chat}'
-        AND message.is_from_me = 0
-    ORDER BY
-        message.date DESC
-    LIMIT 1
-    """
-    cursor.execute(query)
+
+    cursor.execute(
+        """
+        SELECT
+            message."ROWID" AS row_id
+        FROM
+            chat
+        JOIN chat_message_join
+            ON chat."ROWID" = chat_message_join.chat_id
+        JOIN message
+            ON chat_message_join.message_id = message."ROWID"
+        WHERE
+            chat_identifier = ?
+            AND message.is_from_me = 0
+        ORDER BY
+            message.date DESC
+        LIMIT 1
+        """,
+        (chat,)
+    )
+
     result = cursor.fetchone()
+    conn.close()
+
+    # --- Step 3: Compare ---
     if result:
         return result["row_id"] > last_row_id
+    
     return False
