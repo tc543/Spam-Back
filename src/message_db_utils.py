@@ -2,7 +2,7 @@ import sqlite3
 import os
 import json
 from datetime import datetime
-from src import extract_chats, extract_conversation, convert_conversation_to_text, generate_response, send_imessage, init_summary_conversation, update_summary_conversation
+from src import extract_chats, extract_conversation, convert_conversation_to_text, generate_response, send_imessage, init_summary_conversation, update_summary_conversation, generate_spammer_response, update_spammer_summary_conversation, init_spammer_summary_conversation
 from config import config
 
 
@@ -127,10 +127,12 @@ def update_row_in_table(
     """
     TODO
     Might have to add is_spam parameter to update from regular to spammer or vice versa
+    This is for switching spammer value 0 or 1
     """
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    check_if_val_exists(db_path, "chat_id", chat_id, table)
+    if not check_if_val_exists(db_path, "chat_id", chat_id, table):
+        raise ValueError("Row does not exist in the first place")
     fields = []
     values = []
     fields.append("summary = ?")
@@ -162,65 +164,70 @@ def extract_row_from_table(db_path: str, table: str, chat_id: str) -> dict | Non
         row_dict["chat_mp"] = json.loads(row_dict["chat_mp"])
     return row_dict
 
-def init_table(db_path: str, table: str, chat: any, group: bool):    
+def init_table(db_path: str, table: str, chat: any, group: bool, is_spam: int):
     check_if_table_exists(table, db_path)
-    all_chats = extract_chats()
-    for user_chat, group_size in all_chats:
-        if group:
-            if chat == user_chat and group_size > 1:
-                return
-        else:
-            if chat == user_chat and group_size == 1:
-                return
+    if check_if_val_exists(db_path, "chat_id", chat, table):
+        return
+    chat_mp = {}
+    text = ""
     if group:
+        chat = chat[0]
         # TODO assert chat is group
-        conversation = extract_conversation(chat[0], True, False)
-        chat_mp = {}
+        conversation = extract_conversation(chat, True, False)
         text, last_row = convert_conversation_to_text(conversation, chat_mp)
-        init_summary = init_summary_conversation(text, True, chat_mp["Me"])
-        insert_row_in_table(db_path, table, last_row, chat[0], init_summary, 0, chat_mp)
-        response = generate_response(text, True, chat_mp["Me"])
-        send_imessage(chat[0], response)
     else:
         # TODO assert chat is dm
-        conversation = extract_conversation(chat, True, False)
-        chat_mp = {}
+        conversation = extract_conversation(chat, False, False)
         text, last_row = convert_conversation_to_text(conversation, chat_mp)
-        init_summary = init_summary_conversation(text, True, chat_mp["Me"])
-        insert_row_in_table(db_path, table, last_row, chat, init_summary, 0, chat_mp)
+    init_summary = ""
+    response = ""
+    if is_spam == 1:
+        response = generate_spammer_response(text, True, chat_mp["Me"])
+        if group:
+            init_summary = init_spammer_summary_conversation(text, True, config['default']['person_name'])
+        else:
+            init_summary = init_spammer_summary_conversation(text, False, config['default']['person_name'])
+    else:
         response = generate_response(text, True, chat_mp["Me"])
+        if group:
+            init_summary = init_summary_conversation(text, True, config['default']['person_name'])
+        else:
+            init_summary = init_summary_conversation(text, False, config['default']['person_name'])
+    insert_row_in_table(db_path, table, last_row, chat, init_summary, is_spam, chat_mp)
+    if group:
+        send_imessage(chat, response, True)
+    else:
         send_imessage(chat, response)
+
 
 def update_table(db_path : str, table : str, chat: any, group: bool):
     check_if_table_exists(table, db_path)
     if group:
-        curr_row = extract_row_from_table(db_path, table, chat[0])
+        chat = chat[0]
+        curr_row = extract_row_from_table(db_path, table, chat)
         conversation = extract_conversation(chat, True, False, last_row=curr_row["row_id"])
-        text, last_row = convert_conversation_to_text(conversation, curr_row["chat_mp"])
-        print("New incoming text: ")
-        print(text)
-        old_summary = curr_row["summary"]
-        updated_summary = update_summary_conversation(text, curr_row["summary"], curr_row["chat_mp"]["Me"])
-        update_row_in_table(db_path, table, chat[0], last_row, updated_summary, curr_row["chat_mp"])
-        print("New reponse text: ")
-        print(response)
-        response = generate_response(text, False, curr_row["chat_mp"]["Me"], old_summary)
-        send_imessage(chat[0], response)
     else:
         curr_row = extract_row_from_table(db_path, table, chat)
         conversation = extract_conversation(chat, False, False, last_row=curr_row["row_id"])
-        text, last_row = convert_conversation_to_text(conversation, curr_row["chat_mp"])
-        print("New incoming text: ")
-        print(text)
-        old_summary = curr_row["summary"]
+    
+    text, last_row = convert_conversation_to_text(conversation, curr_row["chat_mp"])
+    print("New incoming text: ")
+    print(text)
+    old_summary = curr_row["summary"]
+    if curr_row["is_spam"] == 1:
+        updated_summary = update_spammer_summary_conversation(text, curr_row["summary"], curr_row["chat_mp"]["Me"])
+        update_row_in_table(db_path, table, chat, last_row, updated_summary, curr_row["chat_mp"])
+        response = generate_spammer_response(text, False, curr_row["chat_mp"]["Me"], old_summary)
+    else:
         updated_summary = update_summary_conversation(text, curr_row["summary"], curr_row["chat_mp"]["Me"])
         update_row_in_table(db_path, table, chat, last_row, updated_summary, curr_row["chat_mp"])
         response = generate_response(text, False, curr_row["chat_mp"]["Me"], old_summary)
-        print("New reponse text: ")
-        print(response)
-        send_imessage(chat, response)
+    
+    print("New reponse text: ")
+    print(response)
+    send_imessage(chat, response)
 
-def detect_incoming_messages(db_path: str, table: str, chat: str, group: bool) -> bool:
+def detect_incoming_messages(db_path: str, table: str, chat: str) -> bool:
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()

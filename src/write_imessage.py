@@ -1,19 +1,25 @@
 import subprocess
 
-def send_imessage(recipient, message): # TODO add a spec
+def send_imessage(recipient, message, group : bool = False): # TODO add a spec
     # TODO Write a check if this message exist in imessage or not
-    # chat_identifiers = set(extract_chats())
+    if (not group and recipient[0] == 'c') or (group and recipient != 'c'):
+        raise ValueError("chat id and group variable parameter does not match")
+    target = 'iMessage;'
+    if group:
+        target += '+;'
+    else:
+        target += '-;'
+    target += recipient
     applescript_command = f"""
     on run {{targetBuddyPhone, targetMessage}}
         tell application "Messages"
-            set targetService to 1st service whose service type = iMessage
-            set targetBuddy to buddy targetBuddyPhone of targetService
-            send targetMessage to targetBuddy
+            set targetChat to chat id targetBuddyPhone
+            send targetMessage to targetChat
         end tell
     end run
     """
     try:
-        subprocess.run(["osascript", "-e", applescript_command, recipient, message], check=True)
+        subprocess.run(["osascript", "-e", applescript_command, target, message], check=True)
         print(f"Message sent to {recipient} successfully.")
     except subprocess.CalledProcessError as e:
         print(f"Error sending message: {e}")
