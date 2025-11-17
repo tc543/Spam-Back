@@ -202,6 +202,10 @@ def init_table(db_path: str, table: str, chat: any, group: bool, is_spam: int):
             init_summary = init_summary_conversation(text, False, config['default']['person_name'])
     insert_row_in_table(db_path, table, last_row, chat, init_summary, is_spam, chat_mp)
     print("Record insertion completed.")
+    print('-' * 140)
+    print("New reponse text:\n")
+    print(response)
+    print('-' * 140)
     if group:
         send_imessage(chat, response, True)
     else:
