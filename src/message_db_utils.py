@@ -67,21 +67,26 @@ def get_all_tables(db_path : str) -> bool:
     return tables
 
 def create_table(db_path : str, table : str):
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    cursor.execute(f"""
-    CREATE TABLE IF NOT EXISTS {table} (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        row_id INTEGER NOT NULL,
-        chat_id TEXT NOT NULL,
-        summary TEXT NOT NULL,
-        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-        is_spam INTEGER DEFAULT 0,
-        chat_mp TEXT
-    );
-    """)
-    conn.commit()
-    conn.close()
+    try:
+        check_if_table_exists(table, db_path)
+        print(f"Table '{table}' already exists.")
+    except Exception as e:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute(f"""
+        CREATE TABLE IF NOT EXISTS {table} (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            row_id INTEGER NOT NULL,
+            chat_id TEXT NOT NULL,
+            summary TEXT NOT NULL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            is_spam INTEGER DEFAULT 0,
+            chat_mp TEXT
+        );
+        """)
+        conn.commit()
+        conn.close()
+        print(f"Table '{table}' created successfully.")
 
 def insert_row_in_table(
     db_path: str,
@@ -167,7 +172,9 @@ def extract_row_from_table(db_path: str, table: str, chat_id: str) -> dict | Non
 def init_table(db_path: str, table: str, chat: any, group: bool, is_spam: int):
     check_if_table_exists(table, db_path)
     if check_if_val_exists(db_path, "chat_id", chat, table):
+        print("Skipping: records are already in the table.")
         return
+    print("No existing records found. Inserting now...")
     chat_mp = {}
     text = ""
     if group:
@@ -194,6 +201,11 @@ def init_table(db_path: str, table: str, chat: any, group: bool, is_spam: int):
         else:
             init_summary = init_summary_conversation(text, False, config['default']['person_name'])
     insert_row_in_table(db_path, table, last_row, chat, init_summary, is_spam, chat_mp)
+    print("Record insertion completed.")
+    print('-' * 140)
+    print("New reponse text:\n")
+    print(response)
+    print('-' * 140)
     if group:
         send_imessage(chat, response, True)
     else:
@@ -202,6 +214,7 @@ def init_table(db_path: str, table: str, chat: any, group: bool, is_spam: int):
 
 def update_table(db_path : str, table : str, chat: any, group: bool):
     check_if_table_exists(table, db_path)
+    print("Updating the existing record...")
     if group:
         chat = chat[0]
         curr_row = extract_row_from_table(db_path, table, chat)
@@ -211,8 +224,11 @@ def update_table(db_path : str, table : str, chat: any, group: bool):
         conversation = extract_conversation(chat, False, False, last_row=curr_row["row_id"])
     
     text, last_row = convert_conversation_to_text(conversation, curr_row["chat_mp"])
-    print("New incoming text: ")
+    print('-' * 140)
+    print("New incoming text:\n")
     print(text)
+    print('-' * 140)
+    print("Generating response using LLM...")
     old_summary = curr_row["summary"]
     if curr_row["is_spam"] == 1:
         updated_summary = update_spammer_summary_conversation(text, curr_row["summary"], curr_row["chat_mp"]["Me"])
@@ -222,9 +238,11 @@ def update_table(db_path : str, table : str, chat: any, group: bool):
         updated_summary = update_summary_conversation(text, curr_row["summary"], curr_row["chat_mp"]["Me"])
         update_row_in_table(db_path, table, chat, last_row, updated_summary, curr_row["chat_mp"])
         response = generate_response(text, False, curr_row["chat_mp"]["Me"], old_summary)
-    
-    print("New reponse text: ")
+    print("LLM has finished generating the response.")
+    print('-' * 140)
+    print("New reponse text:\n")
     print(response)
+    print('-' * 140)
     send_imessage(chat, response)
 
 
