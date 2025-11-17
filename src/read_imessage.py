@@ -136,6 +136,7 @@ def convert_conversation_to_text(df, chat_mp):
         #     prompt += "In addition to the text, person " + chat_mp[row.Sender] + " add an attachment to it and the attachment is about "
         #     + " Insert Attachment Summary or something " # TODO, add a summary of what the attachment is, purpose maybe no need to add bc
         #                                                  # it will be easier to see the purpose in this summary when including context clues around
+    text = text[:-2]
     return text, last_row
 
 def open_attachment(filepath : str):
