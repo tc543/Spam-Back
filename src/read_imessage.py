@@ -124,7 +124,7 @@ def convert_conversation_to_text(df, chat_mp):
         last_row = row.Row_ID
         if row.Sender not in chat_mp:
             if row.Sender == "Me":
-                chat_mp[row.Sender] = "John Smith"
+                chat_mp[row.Sender] = config['default']['person_name']
             else:
                 chat_mp[row.Sender] = len(chat_mp)
         text += "Person " + str(chat_mp[row.Sender]) + " said " + row.Text + "\n"
