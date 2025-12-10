@@ -181,15 +181,6 @@ tests/
 
 ---
 
-## 🧱 Current Limitations
-
-* Only supports macOS
-* Polling-based detection (not event-driven)
-* Spam classifier is rule-based (not ML yet)
-* Multi-threaded chat support is limited
-
----
-
 ## 🔭 Future Improvements
 
 * Train a proper spam classifier (ML-based)
