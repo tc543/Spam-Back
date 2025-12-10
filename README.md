@@ -1,4 +1,4 @@
-#📱 Spam Back! — Automated LLM-Powered Responses to iMessage Spam
+## 📱Spam Back! — Automated LLM-Powered Responses to iMessage Spam
 
 Spam Back! is a macOS-based automation tool that detects incoming iMessage spam, generates a safe and human-like response using an LLM (LLaMA 3 via Ollama), and replies automatically — wasting scammers' time without putting the user at risk.
 
