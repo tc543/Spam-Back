@@ -20,3 +20,4 @@ def spam_back(chat: any, is_spam: int):
             print("New message detected.")
             update_table(db_path, table, chat, False)
             print('-' * 140)
+
