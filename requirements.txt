@@ -28,3 +28,6 @@ typing-inspection==0.4.2
 tzdata==2025.2
 urllib3==2.5.0
 yarg==0.1.10
+Fastapi
+uvicorn
+pydantic
