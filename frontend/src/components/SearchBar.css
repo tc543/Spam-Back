@@ -1,0 +1,18 @@
+.search-form {
+  display: flex;          /* 👈 side by side */
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.search-form input {
+  flex: 1;                /* input expands */
+  padding: 14px 20px;
+  font-size: 18px;
+}
+
+.search-form button {
+  padding: 14px 24px;
+  font-family: "Fira Code", monospace;
+  cursor: pointer;
+}

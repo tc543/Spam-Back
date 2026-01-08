@@ -1,6 +1,7 @@
 import SearchBar from "../components/SearchBar";
 import { useState } from "react";
 import api from "../api";
+import "./Home.css";
 
 function Home() {
   const [submittedText, setSubmittedText] = useState("");
@@ -18,9 +19,14 @@ function Home() {
   };
 
   return (
-    <div>
-      <SearchBar onSearchSubmit={handleSearchSubmit} />
-      <div>Last submitted: {submittedText}</div>
+    <div className="home">
+      <div class = "title">
+        <h1>Welcome to</h1>
+        <h1>Spam Back</h1>
+      </div>
+      <div className="search-wrapper">
+        <SearchBar onSearchSubmit={handleSearchSubmit} />
+      </div>
     </div>
   );
 }

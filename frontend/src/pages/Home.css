@@ -1,0 +1,93 @@
+.search-wrapper {
+  width: 800px;     /* controls SearchBar width */
+  height: 200px;
+}
+
+.search-wrapper input {
+  width: 100%;      /* makes input fill wrapper */
+  height: 60px;
+  padding: 0 16px;
+  font-size: 25px;     /* text size */
+}
+
+.home {
+  min-height: 100vh;   /* 👈 full viewport height */
+  width: 100vw;        /* 👈 full viewport width */
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  background: radial-gradient(circle at top, #0f172a, #020617);
+  color: white;
+}
+
+/* Container */
+.title {
+  text-align: center;
+  margin-top: 100px;
+}
+
+/* Common h1 styles */
+.title h1 {
+  display: block;              /* stack vertically */
+  margin: 0 auto;              /* center horizontally */
+  color: #00ff00;
+  font-family: "Fira Code", "Courier New", monospace;
+  font-weight: bold;
+  font-size: 125px;
+  white-space: nowrap;         /* one line per h1 */
+  overflow: hidden;            /* hides text before typing */
+  border-right: 2px solid orange; /* cursor */
+}
+
+/* First line typing */
+.title h1:nth-child(1) {
+    width: 0;
+    animation: type1 2s steps(20, end) forwards;
+}
+
+/* Second line typing (delayed) */
+.title h1:nth-child(2) {
+    width: 0;
+    opacity: 1; /* must be visible for animation */
+    border-right: none; /* hide cursor initially */
+    animation: type2 2s steps(20, end) 2.1s forwards;
+}
+
+/* Typing keyframes */
+@keyframes type1 {
+  0% {
+    width: 0;
+    border-right: 2px solid orange;
+  }
+  99% {
+    width: 99%;
+    border-right: 2px solid orange;
+  }
+  100% {
+    width: 100%;
+    border-right: none; /* hide cursor at the very end */
+  }
+}
+
+/* Typing keyframes */
+@keyframes type2 {
+  0% {
+    width: 0;
+    border-right: none;
+  }
+  1% {
+    width: 1%;
+    border-right: 2px solid orange;
+  }
+  99% {
+    width: 99%;
+    border-right: 2px solid orange;
+  }
+  100% {
+    width: 100%;
+    border-right: none; /* hide cursor at the very end */
+  }
+}
